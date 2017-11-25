@@ -1,4 +1,5 @@
 from nltk.stem.wordnet import WordNetLemmatizer
+import sys
 
 '''
 Takes in a string (data), and applies standard preprocessing to it, returning a list of tokens.
@@ -6,7 +7,15 @@ Takes in a string (data), and applies standard preprocessing to it, returning a 
 def preprocess(data):
     return list(data)
 
-def orig():
+'''
+Takes a filename in the form of docA-*.txt
+Where A is an integer.
+Returns a list of strings, where each string is the body of an article in cluster A.
+'''
+def extract(filename):
+    return filename
+
+def orig(articles):
     return True
 
 def simplified():
@@ -15,8 +24,27 @@ def simplified():
 def leading():
     return True
 
-def main():
-    return True
+'''
+Returns the results of calling the method referred to by 'name' with dataset input.
+'''
+def call_method(name, dataset):
+    if name == 'orig':
+        return orig(dataset)
+    elif name == 'simplified':
+        return simplified(dataset)
+    elif name == 'leading':
+        return leading(dataset)
+    else:
+        return "The provided name is not in the list of available methods."
+
+def main(method_name, file_n):
+    articles = extract(file_n)
+    processed = [preprocess(a) for a in articles]
+    return call_method(method_name, processed)
 
 if __name__ == "__main__":
-    main()
+    args = sys.argv
+    if len(args) != 3:
+        print("Wrong argument count.")
+    else:
+        print(main(args[1], args[2]))
