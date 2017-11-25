@@ -6,9 +6,10 @@ stops = stopwords.words('english')
 import sys
 import glob
 import string
+import codecs
 
 wnl = WordNetLemmatizer()
-LIMIT = 25
+LIMIT = 150
 punctuation = string.punctuation
 
 '''
@@ -30,7 +31,7 @@ def preprocess(data):
     for i in range(len(sentences)):
         sentences[i] = sentences[i].lower()
         word_tokenized = word_tokenize(sentences[i])
-        sentences[i] = [w in word_tokenized if w not in stops]
+        sentences[i] = [w for w in word_tokenized if w not in stops]
     # Apply lemmatization
     sentences = lemmatize(sentences)
     return sentences
@@ -44,8 +45,8 @@ def extract(filename):
     names = glob.glob(filename)
     articles = []
     for n in names:
-        f = open(n, 'r')
-        articles.append(f.read().replace('\n',' '))
+        f = codecs.open(n, 'r', 'utf-8')
+        articles.append(f.read().replace('\n',' ').replace(u"\u2013","-").replace(u"\u2018", "'").replace(u"\u2019", "'").replace(u"\u201C","\"").replace(u"\u201D", "\""))
         f.close()
     return articles
 
@@ -59,8 +60,8 @@ def word_probs(articles):
     for a in articles:
         for s in a:
             for w in s:
-                if w not in punctuation
-                    proc = w.translate(None, punctuation)
+                if w not in punctuation:
+                    proc = w.translate(punctuation)
                     if proc not in words:
                         words[proc] = 1
                     else:
@@ -78,7 +79,7 @@ def sent_weights(articles, word_ps):
     weights = dict()
     for a in articles:
         for s in a:
-            weights[s] = sum([word_ps[w.translate(None, punctuation)] for w in s if w not in punctuation])/float(len(s))
+            weights[tuple(s)] = sum([word_ps[w.translate(punctuation)] for w in s if w not in punctuation])/float(len(s))
     return weights
 
 '''
@@ -88,7 +89,7 @@ Updates the probabilities of the words in the chosen sentence
 def update_probs(chosen_sentence, word_ps):
     for w in chosen_sentence:
         if w not in punctuation:
-            proc = w.translate(None, punctuation)
+            proc = w.translate(punctuation)
             word_ps[proc] = word_ps[proc]*word_ps[proc]
 
 '''
@@ -98,16 +99,18 @@ def get_best_sent(word_ps, sent_ws):
     # Get highest prob word
     max_so_far = (" ", 0.0)
     for k, v in word_ps.items():
-        if v > 0.0:
+        if v > max_so_far[1]:
             max_so_far = (k, v)
     best_word = max_so_far[0]
+    # Find all sentences that have the best word in them
     considered = []
     for k, v in sent_ws.items():
-        if best_word in [w.translate(None, punctuation) for w in k]:
+        if best_word in [w.translate(punctuation) for w in k]:
             considered.append((k, v))
+    # Find the highest scoring sentence
     max_so_far = ([], 0.0)
-    for s, v in considered:
-        if v > 0.0:
+    for k, v in considered:
+        if v > max_so_far[1]:
             max_so_far = (k, v)
     return max_so_far[0]
 
@@ -121,7 +124,7 @@ def orig(articles, word_limit):
     summary = []
     # Calculate word probabilities
     word_probabilities = word_probs(articles)
-    while len([w for w in s for s in summary]) < word_limit:
+    while len([w for s in summary for w in s]) < word_limit:
         # Calculate sentence weights
         sentence_weights = sent_weights(articles, word_probabilities)
         # Out of the set of sentences which contain the highest probability word, pick best scoring sentence
@@ -143,7 +146,7 @@ def simplified(articles, word_limit):
     summary = []
     # Calculate word probabilities
     word_probabilities = word_probs(articles)
-    while len([w for w in s for s in summary]) < word_limit:
+    while len([w for s in summary for w in s]) < word_limit:
         # Calculate sentence weights
         sentence_weights = sent_weights(articles, word_probabilities)
         # Out of the set of sentences which contain the highest probability word, pick best scoring sentence
@@ -163,10 +166,10 @@ def leading(articles, word_lim):
     for sentence in articles[0]:
         for word in sentence:
             if len(summary) < word_lim:
-                summary.append(word)
+                summary.append(codecs.encode(word, 'utf-8'))
             else:
                 break
-    return summary
+    return ' '.join(summary)
 
 '''
 Returns the results of calling the method referred to by 'name' with dataset input.
@@ -175,7 +178,7 @@ def call_method(name, dataset):
     if name == 'orig':
         return orig(dataset, LIMIT)
     elif name == 'simplified':
-        return simplified(dataset)
+        return simplified(dataset, LIMIT)
     elif name == 'leading':
         return leading(dataset, LIMIT)
     else:
@@ -195,7 +198,4 @@ def main(method_name, file_n):
 
 if __name__ == "__main__":
     args = sys.argv
-    if len(args) != 3:
-        print("Wrong argument count.")
-    else:
-        print(main(args[1], args[2]))
+    print(main(args[1], args[2]))
