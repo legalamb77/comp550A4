@@ -5,9 +5,11 @@ from nltk.corpus import stopwords
 stops = stopwords.words('english')
 import sys
 import glob
+import string
 
 wnl = WordNetLemmatizer()
 LIMIT = 25
+punctuation = string.punctuation
 
 '''
 Takes a list of sentences, which are each a list of word tokens, and lemmatizes each of the words.
@@ -57,11 +59,13 @@ def word_probs(articles):
     for a in articles:
         for s in a:
             for w in s:
-                if w in words:
-                    words[w] = 1
-                else:
-                    words[w] += 1
-                total += 1
+                if w not in punctuation
+                    proc = w.translate(None, punctuation)
+                    if proc not in words:
+                        words[proc] = 1
+                    else:
+                        words[proc] += 1
+                    total += 1
     for k, v in words.items():
         words[k] = float(v)/total
     return words
@@ -74,21 +78,38 @@ def sent_weights(articles, word_ps):
     weights = dict()
     for a in articles:
         for s in a:
-            weights[s] = sum([word_ps[w] for w in s])/float(len(s))
+            weights[s] = sum([word_ps[w.translate(None, punctuation)] for w in s if w not in punctuation])/float(len(s))
     return weights
 
 '''
-Takes the articles, chosen sentence, and word probabilities
+Takes the chosen sentence, and word probabilities
 Updates the probabilities of the words in the chosen sentence
 '''
-def update_probs(articles, chosen_sentence, word_ps):
-    #
+def update_probs(chosen_sentence, word_ps):
+    for w in chosen_sentence:
+        if w not in punctuation:
+            proc = w.translate(None, punctuation)
+            word_ps[proc] = word_ps[proc]*word_ps[proc]
 
 '''
 Returns the best scoring sentence from the set of sentences which contain the highest probability word
 '''
-def get_best_sent(articles, word_ps, sent_ws):
-    #
+def get_best_sent(word_ps, sent_ws):
+    # Get highest prob word
+    max_so_far = (" ", 0.0)
+    for k, v in word_ps.items():
+        if v > 0.0:
+            max_so_far = (k, v)
+    best_word = max_so_far[0]
+    considered = []
+    for k, v in sent_ws.items():
+        if best_word in [w.translate(None, punctuation) for w in k]:
+            considered.append((k, v))
+    max_so_far = ([], 0.0)
+    for s, v in considered:
+        if v > 0.0:
+            max_so_far = (k, v)
+    return max_so_far[0]
 
 '''
 Original implementation of sumbasic from the paper.
@@ -104,11 +125,11 @@ def orig(articles, word_limit):
         # Calculate sentence weights
         sentence_weights = sent_weights(articles, word_probabilities)
         # Out of the set of sentences which contain the highest probability word, pick best scoring sentence
-        best = get_best_sent(articles, word_probabilities, sentence_weights)
+        best = get_best_sent(word_probabilities, sentence_weights)
         # Add chosen sentence to summary
         summary.append(best)
         # Update probabilities of all words in chosen sentence
-        update_probs(articles, best, word_probabilities)
+        update_probs(best, word_probabilities)
         # Repeat from 2 if length is lower than desired
     for i in range(len(summary)):
         summary[i] = ' '.join(summary[i])
@@ -126,7 +147,7 @@ def simplified(articles, word_limit):
         # Calculate sentence weights
         sentence_weights = sent_weights(articles, word_probabilities)
         # Out of the set of sentences which contain the highest probability word, pick best scoring sentence
-        best = get_best_sent(articles, word_probabilities, sentence_weights)
+        best = get_best_sent(word_probabilities, sentence_weights)
         # Add chosen sentence to summary
         summary.append(best)
         # Repeat from 2 if length is lower than desired
