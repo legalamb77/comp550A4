@@ -4,6 +4,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 stops = stopwords.words('english')
 import sys
+import glob
 
 wnl = WordNetLemmatizer()
 
@@ -37,7 +38,13 @@ Where A is an integer.
 Returns a list of strings, where each string is the body of an article in cluster A.
 '''
 def extract(filename):
-    return filename
+    names = glob.glob(filename)
+    articles = []
+    for n in names:
+        f = open(n, 'r')
+        articles.append(f.read().replace('\n',' '))
+        f.close()
+    return articles
 
 '''
 Original implementation of sumbasic from the paper.
