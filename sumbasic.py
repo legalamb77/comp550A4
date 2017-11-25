@@ -15,13 +15,24 @@ Returns a list of strings, where each string is the body of an article in cluste
 def extract(filename):
     return filename
 
+'''
+Original implementation of sumbasic from the paper.
+Articles is a list of lists of string tokens.
+Returns a string summary.
+'''
 def orig(articles):
     return True
 
-def simplified():
+'''
+Simplified sumbasic without non-redundancy update.
+'''
+def simplified(articles):
     return True
 
-def leading():
+'''
+Takes the leading sentences of one of one of the articles(arbitrary selection), up until a word limit is reached.
+'''
+def leading(articles, word_lim):
     return True
 
 '''
