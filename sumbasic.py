@@ -1,11 +1,35 @@
 from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.tokenize import sent_tokenize
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+stops = stopwords.words('english')
 import sys
+
+wnl = WordNetLemmatizer()
+
+'''
+Takes a list of sentences, which are each a list of word tokens, and lemmatizes each of the words.
+'''
+def lemmatize(sentences):
+    lemmatized = []
+    for s in sentences:
+        lemmatized.append([wnl.lemmatize(w) for w in s])
+    return lemmatized
 
 '''
 Takes in a string (data), and applies standard preprocessing to it, returning a list of tokens.
 '''
 def preprocess(data):
-    return list(data)
+    # Apply sentence segmentation
+    sentences = sent_tokenize(data)
+    # Apply tokenization within the sentences and store seperately, removing stop words and lowercasing all
+    for i in range(len(sentences)):
+        sentences[i] = sentences[i].lower()
+        word_tokenized = word_tokenize(sentences[i])
+        sentences[i] = [w in word_tokenized if w not in stops]
+    # Apply lemmatization
+    sentences = lemmatize(sentences)
+    return sentences
 
 '''
 Takes a filename in the form of docA-*.txt
@@ -17,7 +41,7 @@ def extract(filename):
 
 '''
 Original implementation of sumbasic from the paper.
-Articles is a list of lists of string tokens.
+Articles is a list(one per article) of lists(one for each sentence) of lists of strings (one for each word).
 Returns a string summary.
 '''
 def orig(articles):
