@@ -7,6 +7,7 @@ import sys
 import glob
 
 wnl = WordNetLemmatizer()
+LIMIT = 25
 
 '''
 Takes a list of sentences, which are each a list of word tokens, and lemmatizes each of the words.
@@ -64,7 +65,14 @@ def simplified(articles):
 Takes the leading sentences of one of one of the articles(arbitrary selection), up until a word limit is reached.
 '''
 def leading(articles, word_lim):
-    return True
+    summary = []
+    for sentence in articles[0]:
+        for word in sentence:
+            if len(summary) < word_lim:
+                summary.append(word)
+            else:
+                break
+    return summary
 
 '''
 Returns the results of calling the method referred to by 'name' with dataset input.
@@ -75,9 +83,16 @@ def call_method(name, dataset):
     elif name == 'simplified':
         return simplified(dataset)
     elif name == 'leading':
-        return leading(dataset)
+        return leading(dataset, LIMIT)
     else:
-        return "The provided name is not in the list of available methods."
+        return ["The provided name is not in the list of available methods."]
+
+def pretty_print(sentences):
+    for s in sentences:
+        if isInstance(s, basestring):
+            print(s)
+        else:
+            print(' '.join(s) + "\n")
 
 def main(method_name, file_n):
     articles = extract(file_n)
@@ -89,4 +104,4 @@ if __name__ == "__main__":
     if len(args) != 3:
         print("Wrong argument count.")
     else:
-        print(main(args[1], args[2]))
+        pretty_print(main(args[1], args[2]))
