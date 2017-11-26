@@ -27,6 +27,7 @@ Takes in a string (data), and applies standard preprocessing to it, returning a 
 def preprocess(data):
     # Apply sentence segmentation
     sentences = sent_tokenize(data)
+    unproc = sentences[:]
     # Apply tokenization within the sentences and store seperately, removing stop words and lowercasing all
     for i in range(len(sentences)):
         sentences[i] = sentences[i].lower()
@@ -34,7 +35,7 @@ def preprocess(data):
         sentences[i] = [w for w in word_tokenized if w not in stops]
     # Apply lemmatization
     sentences = lemmatize(sentences)
-    return sentences
+    return (sentences, unproc)
 
 '''
 Takes a filename in the form of docA-*.txt
@@ -57,16 +58,15 @@ Returns a dictionary mapping word type to P(w) = (# of w tokens)/(# of all token
 def word_probs(articles):
     words = dict()
     total = 0
-    for a in articles:
-        for s in a:
-            for w in s:
-                if w not in punctuation:
-                    proc = w.translate(punctuation)
-                    if proc not in words:
-                        words[proc] = 1
-                    else:
-                        words[proc] += 1
-                    total += 1
+    for s in articles:
+        for w in s:
+            if w not in punctuation:
+                proc = w.translate(punctuation)
+                if proc not in words:
+                    words[proc] = 1
+                else:
+                    words[proc] += 1
+                total += 1
     for k, v in words.items():
         words[k] = float(v)/total
     return words
@@ -77,9 +77,8 @@ Returns the weighted sentences in the form of a dictionary mapping sentence to w
 '''
 def sent_weights(articles, word_ps):
     weights = dict()
-    for a in articles:
-        for s in a:
-            weights[tuple(s)] = sum([word_ps[w.translate(punctuation)] for w in s if w not in punctuation])/float(len(s))
+    for s in articles:
+        weights[tuple(s)] = sum([word_ps[w.translate(punctuation)] for w in s if w not in punctuation])/float(len(s))
     return weights
 
 '''
@@ -120,42 +119,56 @@ Articles is a list(one per article) of lists(one for each sentence) of lists of 
 Returns a string summary.
 '''
 def orig(articles, word_limit):
+    processed = []
+    unproc = []
+    for a in articles:
+        for sent1 in a[0]:
+            processed.append(sent1)
+        for sent2 in a[1]:
+            unproc.append(sent2)
     # Summary is a list of sentences. The sentences are lists of strings(words).
     summary = []
     # Calculate word probabilities
-    word_probabilities = word_probs(articles)
+    word_probabilities = word_probs(processed)
     while len([w for s in summary for w in s]) < word_limit:
         # Calculate sentence weights
-        sentence_weights = sent_weights(articles, word_probabilities)
+        sentence_weights = sent_weights(processed, word_probabilities)
         # Out of the set of sentences which contain the highest probability word, pick best scoring sentence
         best = get_best_sent(word_probabilities, sentence_weights)
         # Add chosen sentence to summary
-        summary.append(best)
+        summary.append(unproc[processed.index(list(best))])
         # Update probabilities of all words in chosen sentence
         update_probs(best, word_probabilities)
         # Repeat from 2 if length is lower than desired
     for i in range(len(summary)):
-        summary[i] = ' '.join(summary[i])
+        summary[i] = ''.join(summary[i])
     return '\n'.join(summary)
 
 '''
 Simplified sumbasic without non-redundancy update.
 '''
 def simplified(articles, word_limit):
+    processed = []
+    unproc = []
+    for a in articles:
+        for sent1 in a[0]:
+            processed.append(sent1)
+        for sent2 in a[1]:
+            unproc.append(sent2)
     # Summary is a list of sentences. The sentences are lists of strings(words).
     summary = []
     # Calculate word probabilities
-    word_probabilities = word_probs(articles)
+    word_probabilities = word_probs(processed)
     while len([w for s in summary for w in s]) < word_limit:
         # Calculate sentence weights
-        sentence_weights = sent_weights(articles, word_probabilities)
+        sentence_weights = sent_weights(processed, word_probabilities)
         # Out of the set of sentences which contain the highest probability word, pick best scoring sentence
         best = get_best_sent(word_probabilities, sentence_weights)
         # Add chosen sentence to summary
-        summary.append(best)
+        summary.append(unproc[processed.index(list(best))])
         # Repeat from 2 if length is lower than desired
     for i in range(len(summary)):
-        summary[i] = ' '.join(summary[i])
+        summary[i] = ''.join(summary[i])
     return '\n'.join(summary)
 
 '''
@@ -163,12 +176,13 @@ Takes the leading sentences of one of one of the articles(arbitrary selection), 
 '''
 def leading(articles, word_lim):
     summary = []
-    for sentence in articles[0]:
-        for word in sentence:
-            if len(summary) < word_lim:
-                summary.append(codecs.encode(word, 'utf-8'))
-            else:
-                break
+    for a in articles:
+        for sentence in a[1]:
+            for word in word_tokenize(sentence):
+                if len(summary) < word_lim:
+                    summary.append(codecs.encode(word, 'utf-8'))
+                else:
+                    break
     return ' '.join(summary)
 
 '''
@@ -184,16 +198,10 @@ def call_method(name, dataset):
     else:
         return "The provided name is not in the list of available methods."
 
-#def pretty_print(sentences):
-#    for s in sentences:
-#        if isInstance(s, basestring):
-#            print(s)
-#        else:
-#            print(' '.join(s) + "\n")
-
 def main(method_name, file_n):
     articles = extract(file_n)
     processed = [preprocess(a) for a in articles]
+    #processed = [preprocess(a) for a in articles]
     return call_method(method_name, processed)
 
 if __name__ == "__main__":
